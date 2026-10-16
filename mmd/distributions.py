@@ -12,6 +12,9 @@ def gaussian_null(key, n, sample_shape=()):
 
     return x, y
 
+def make_guassian_null_sampler(n, sample_shape=()):
+    return lambda key: gaussian_null(key, n, sample_shape)
+
 def gaussian_mean_shift(key, n, sample_shape=(), shift=1.0):
     """
     Samples x from N(0, I) and y from N(shift, I).
@@ -23,6 +26,9 @@ def gaussian_mean_shift(key, n, sample_shape=(), shift=1.0):
 
     return x, y
 
+def make_gaussian_mean_shift_sampler(n, sample_shape=(), shift=1.0):
+    return lambda key: gaussian_mean_shift(key, n, sample_shape, shift)
+
 def gaussian_scale_shift(key, n, sample_shape=(), scale=2.0):
     """
     Samples x from N(0, I) and y from N(0, scale^2 * I).
@@ -33,6 +39,9 @@ def gaussian_scale_shift(key, n, sample_shape=(), scale=2.0):
     y = scale * jax.random.normal(key_y, (n,) + tuple(sample_shape))
 
     return x, y
+
+def make_gaussian_scale_shift_sampler(n, sample_shape=(), scale=2.0):
+    return lambda key: gaussian_scale_shift(key, n, sample_shape, scale)
 
 def gaussian_vs_uniform(key, n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=jnp.sqrt(3.0)):
     """
@@ -47,6 +56,9 @@ def gaussian_vs_uniform(key, n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=j
     y = jax.random.uniform(key_y, (n,) + tuple(sample_shape), minval=minval, maxval=maxval)
 
     return x, y
+
+def make_gaussian_vs_uniform_sampler(n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=jnp.sqrt(3.0)):
+    return lambda key: gaussian_vs_uniform(key, n, sample_shape, minval, maxval)
 
 def gaussian_mixture(key, n, sample_shape=(), separation=2.0):
     """
@@ -67,6 +79,9 @@ def gaussian_mixture(key, n, sample_shape=(), separation=2.0):
 
     return x, y
 
+def make_gaussian_mixture_sampler(n, sample_shape=(), separation=2.0):
+    return lambda key: gaussian_mixture(key, n, sample_shape, separation)
+
 def gaussian_outliers(key, n, sample_shape=(), outlier_probability=0.1, outlier_scale=5.0):
     """
     Samples x N(0, I) and y from a mixture of N(0, I) and N(0, outlier_scale^2 * I).
@@ -86,3 +101,6 @@ def gaussian_outliers(key, n, sample_shape=(), outlier_probability=0.1, outlier_
     y = y * scales
 
     return x, y
+
+def make_gaussian_outliers_sampler(n, sample_shape=(), outlier_probability=0.1, outlier_scale=5.0):
+    return lambda key: gaussian_outliers(key, n, sample_shape, outlier_probability, outlier_scale)
