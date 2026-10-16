@@ -12,7 +12,7 @@ def gaussian_null(key, n, sample_shape=()):
 
     return x, y
 
-def make_guassian_null_sampler(n, sample_shape=()):
+def make_gaussian_null_sampler(n, sample_shape=()):
     return lambda key: gaussian_null(key, n, sample_shape)
 
 def gaussian_mean_shift(key, n, sample_shape=(), shift=1.0):
