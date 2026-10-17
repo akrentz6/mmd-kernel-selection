@@ -24,17 +24,35 @@ def permutation_test(x, y, kernel, key, num_permutations=1000):
     if num_permutations < 1:
         raise ValueError("num_permutations must be at least 1.")
 
-    observed = estimators.mmd_squared_biased(x, y, kernel)
+    m = x.shape[0]
+    n = y.shape[0]
+    combined = jnp.concatenate([x, y], axis=0)
+    k_combined = estimators.gram_matrix(combined, combined, kernel)
+    indices = jnp.arange(m + n)
+
+    def statistic_from_indices(indices):
+        # Membership vectors avoid gathering matrix blocks for each permutation.
+        in_x = jnp.zeros((m + n,), dtype=k_combined.dtype)
+        in_x = in_x.at[indices[:m]].set(1)
+        in_y = 1 - in_x
+
+        k_x = k_combined @ in_x
+        k_y = k_combined @ in_y
+
+        return (in_x @ k_x) / (m * m) + (in_y @ k_y) / (n * n) - 2 * (in_x @ k_y) / (m * n)
+
+    observed = statistic_from_indices(indices)
 
     keys = jax.random.split(key, num=num_permutations)
 
     def count_exceedance(count, permutation_key):
-        permuted_x, permuted_y = permute_samples(x, y, permutation_key)
-        statistic = estimators.mmd_squared_biased(permuted_x, permuted_y, kernel)
+        permuted_indices = jax.random.permutation(permutation_key, indices)
+        statistic = statistic_from_indices(permuted_indices)
         return count + (statistic >= observed), None
 
-    exceedances, _ = jax.lax.scan(count_exceedance, jnp.asarray(0, dtype=jnp.int32), keys)
-    p_value = (1 + exceedances) / (num_permutations + 1)
+    # Limit matrix operations to a small batch of permutations at a time.
+    exceedances, _ = jax.lax.map(partial(count_exceedance, 0), keys, batch_size=min(32, num_permutations))
+    p_value = (1 + jnp.sum(exceedances)) / (num_permutations + 1)
     return observed, p_value
 
 @partial(jax.jit, static_argnames=("sampler", "kernel", "num_trials", "num_permutations"))
