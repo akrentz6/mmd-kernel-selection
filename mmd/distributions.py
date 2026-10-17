@@ -1,7 +1,11 @@
+import math
 from functools import partial
 
 import jax
 import jax.numpy as jnp
+
+
+SQRT_THREE = math.sqrt(3.0)
 
 
 @partial(jax.jit, static_argnames=("n", "sample_shape"))
@@ -50,7 +54,7 @@ def make_gaussian_scale_shift_sampler(n, sample_shape=(), scale=2.0):
     return lambda key: gaussian_scale_shift(key, n, sample_shape, scale)
 
 @partial(jax.jit, static_argnames=("n", "sample_shape"))
-def gaussian_vs_uniform(key, n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=jnp.sqrt(3.0)):
+def gaussian_vs_uniform(key, n, sample_shape=(), minval=-SQRT_THREE, maxval=SQRT_THREE):
     """
     Samples x from N(0, I) and y from U[-1, 1].
 
@@ -64,7 +68,7 @@ def gaussian_vs_uniform(key, n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=j
 
     return x, y
 
-def make_gaussian_vs_uniform_sampler(n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=jnp.sqrt(3.0)):
+def make_gaussian_vs_uniform_sampler(n, sample_shape=(), minval=-SQRT_THREE, maxval=SQRT_THREE):
     return lambda key: gaussian_vs_uniform(key, n, sample_shape, minval, maxval)
 
 @partial(jax.jit, static_argnames=("n", "sample_shape"))

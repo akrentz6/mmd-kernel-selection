@@ -3,7 +3,7 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-import estimators
+from . import estimators
 
 
 @jax.jit
