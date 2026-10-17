@@ -1,8 +1,12 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 
 import estimators
 
+
+@jax.jit
 def permute_samples(x, y, key):
     """
     Randomly reassigns the pooled observations to the two samples.
@@ -12,6 +16,7 @@ def permute_samples(x, y, key):
 
     return jnp.split(permuted, [x.shape[0]], axis=0)
 
+@partial(jax.jit, static_argnames=("kernel", "num_permutations"))
 def permutation_test(x, y, kernel, key, num_permutations=1000):
     """
     Performs an MMD permutation test.
@@ -32,6 +37,7 @@ def permutation_test(x, y, kernel, key, num_permutations=1000):
     p_value = (1 + exceedances) / (num_permutations + 1)
     return observed, p_value
 
+@partial(jax.jit, static_argnames=("sampler", "kernel", "num_trials", "num_permutations"))
 def estimate_rejection_rate(sampler, kernel, key, alpha=0.05, num_trials=500, num_permutations=500):
     """
     Estimates the rejection rate of the MMD test. If sampler generates samples from
@@ -51,7 +57,5 @@ def estimate_rejection_rate(sampler, kernel, key, alpha=0.05, num_trials=500, nu
 
         return count + (p_value < alpha), None
 
-    rejections, _ = jax.lax.scan(
-        count_rejection, jnp.asarray(0, dtype=jnp.int32), keys
-    )
+    rejections, _ = jax.lax.scan(count_rejection, jnp.asarray(0, dtype=jnp.int32), keys)
     return rejections / num_trials

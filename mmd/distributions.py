@@ -1,6 +1,10 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 
+
+@partial(jax.jit, static_argnames=("n", "sample_shape"))
 def gaussian_null(key, n, sample_shape=()):
     """
     Samples x and y independently from N(0, I).
@@ -15,6 +19,7 @@ def gaussian_null(key, n, sample_shape=()):
 def make_gaussian_null_sampler(n, sample_shape=()):
     return lambda key: gaussian_null(key, n, sample_shape)
 
+@partial(jax.jit, static_argnames=("n", "sample_shape"))
 def gaussian_mean_shift(key, n, sample_shape=(), shift=1.0):
     """
     Samples x from N(0, I) and y from N(shift, I).
@@ -29,6 +34,7 @@ def gaussian_mean_shift(key, n, sample_shape=(), shift=1.0):
 def make_gaussian_mean_shift_sampler(n, sample_shape=(), shift=1.0):
     return lambda key: gaussian_mean_shift(key, n, sample_shape, shift)
 
+@partial(jax.jit, static_argnames=("n", "sample_shape"))
 def gaussian_scale_shift(key, n, sample_shape=(), scale=2.0):
     """
     Samples x from N(0, I) and y from N(0, scale^2 * I).
@@ -43,6 +49,7 @@ def gaussian_scale_shift(key, n, sample_shape=(), scale=2.0):
 def make_gaussian_scale_shift_sampler(n, sample_shape=(), scale=2.0):
     return lambda key: gaussian_scale_shift(key, n, sample_shape, scale)
 
+@partial(jax.jit, static_argnames=("n", "sample_shape"))
 def gaussian_vs_uniform(key, n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=jnp.sqrt(3.0)):
     """
     Samples x from N(0, I) and y from U[-1, 1].
@@ -60,6 +67,7 @@ def gaussian_vs_uniform(key, n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=j
 def make_gaussian_vs_uniform_sampler(n, sample_shape=(), minval=-jnp.sqrt(3.0), maxval=jnp.sqrt(3.0)):
     return lambda key: gaussian_vs_uniform(key, n, sample_shape, minval, maxval)
 
+@partial(jax.jit, static_argnames=("n", "sample_shape"))
 def gaussian_mixture(key, n, sample_shape=(), separation=2.0):
     """
     Samples x from N(0, I) and y from 0.5 * N(-separation, I) + 0.5 * N(separation, I).
@@ -82,6 +90,7 @@ def gaussian_mixture(key, n, sample_shape=(), separation=2.0):
 def make_gaussian_mixture_sampler(n, sample_shape=(), separation=2.0):
     return lambda key: gaussian_mixture(key, n, sample_shape, separation)
 
+@partial(jax.jit, static_argnames=("n", "sample_shape"))
 def gaussian_outliers(key, n, sample_shape=(), outlier_probability=0.1, outlier_scale=5.0):
     """
     Samples x N(0, I) and y from a mixture of N(0, I) and N(0, outlier_scale^2 * I).

@@ -1,6 +1,10 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 
+
+@partial(jax.jit, static_argnames=("kernel",))
 def gram_matrix(x, y, kernel):
     """
     Computes the Gram matrix between two sets of samples:
@@ -9,6 +13,7 @@ def gram_matrix(x, y, kernel):
     return jax.vmap(jax.vmap(kernel, in_axes=(None, 0)), in_axes=(0, None))(x, y)
 
 
+@partial(jax.jit, static_argnames=("kernel",))
 def mmd_squared_biased(x, y, kernel):
     """
     Computes the biased Maximum Mean Discrepancy (MMD) between two sets of samples.
@@ -22,6 +27,7 @@ def mmd_squared_biased(x, y, kernel):
 
     return jnp.sum(k_xx) / (m * m) + jnp.sum(k_yy) / (n * n) - 2 * jnp.sum(k_xy) / (m * n)
 
+@partial(jax.jit, static_argnames=("kernel",))
 def mmd_squared_unbiased(x, y, kernel):
     """
     Computes the unbiased Maximum Mean Discrepancy (MMD) between two sets of samples.

@@ -1,5 +1,8 @@
+import jax
 import jax.numpy as jnp
 
+
+@jax.jit
 def gaussian_kernel(x, y, sigma):
     """
     Computes the Gaussian kernel between two sets of points.
@@ -10,6 +13,7 @@ def gaussian_kernel(x, y, sigma):
 def make_gaussian_kernel(sigma):
     return lambda x, y: gaussian_kernel(x, y, sigma)
 
+@jax.jit
 def rbf_kernel(x, y, gamma):
     """
     Computes the Radial Basis Function (RBF) kernel between two sets of points.
@@ -20,6 +24,7 @@ def rbf_kernel(x, y, gamma):
 def make_rbf_kernel(gamma):
     return lambda x, y: rbf_kernel(x, y, gamma)
 
+@jax.jit
 def median_heuristic(x):
     """
     Computes the median pairwise distance between points in x.
@@ -37,6 +42,7 @@ def median_heuristic(x):
 
     return jnp.median(distances)
 
+@jax.jit
 def pooled_median_heuristic(x, y):
     """
     Computes the median heuristic on the pooled samples from x and y.
