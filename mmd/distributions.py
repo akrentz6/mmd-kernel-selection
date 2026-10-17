@@ -56,7 +56,7 @@ def make_gaussian_scale_shift_sampler(n, sample_shape=(), scale=2.0):
 @partial(jax.jit, static_argnames=("n", "sample_shape"))
 def gaussian_vs_uniform(key, n, sample_shape=(), minval=-SQRT_THREE, maxval=SQRT_THREE):
     """
-    Samples x from N(0, I) and y from U[-1, 1].
+    Samples x from N(0, I) and y from U[-sqrt(3), sqrt(3)].
 
     The default uniform distribution has mean 0 and variance 1,
     matching the first two moments of the standard Gaussian.
