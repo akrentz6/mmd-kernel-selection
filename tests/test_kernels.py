@@ -55,8 +55,18 @@ def test_gaussian_and_rbf_match():
     print("RBF:", rbf_value)
     assert jnp.isclose(gaussian_value, rbf_value)
 
+def test_median_heuristic_for_multidimensional_samples():
+    x = jnp.array([[[0.0, 0.0]], [[3.0, 4.0]], [[6.0, 8.0]]])
+
+    # Pairwise distances are 5, 10, and 5.
+    median_distance = kernels.median_heuristic(x)
+
+    print("Median heuristic:", median_distance)
+    assert jnp.isclose(median_distance, 5.0)
+
 if __name__ == "__main__":
     test_gaussian_kernel_same_point()
     test_gaussian_kernel_symmetry()
     test_gaussian_kernel_distance()
     test_gaussian_and_rbf_match()
+    test_median_heuristic_for_multidimensional_samples()
