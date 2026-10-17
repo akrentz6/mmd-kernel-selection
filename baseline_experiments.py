@@ -1,5 +1,4 @@
 import argparse
-import math
 import time
 
 import jax
@@ -12,12 +11,13 @@ ALPHA = 0.05
 N = 100
 DIMENSION = 2
 SIGMA = 1.0
-SHIFT = 0.5
 
 EFFECT_SIZES = [0.0, 0.1, 0.25, 0.5, 1.0]
-SAMPLE_SIZES = [25, 50, 100, 200]
-BANDWIDTHS = [0.25, 0.5, 1.0, 2.0, 4.0]
-DIMENSIONS = [1, 2, 5, 10, 20]
+BANDWIDTHS = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
+MEAN_SHIFT = 0.25
+SCALE_SHIFT = 1.25
+OUTLIER_PROBABILITY = 0.1
+OUTLIER_SCALE = 4.0
 
 
 def run_test(name, value, sampler, kernel, key, trials, permutations):
@@ -36,11 +36,22 @@ def run_test(name, value, sampler, kernel, key, trials, permutations):
     print(f"{name}: {value} -> {rate:.3f} ({elapsed:.1f}s)")
 
 def type_1_error(key, trials, permutations):
+    """
+    Basic check that the permutation test is correctly calibrated.
+    """
+    print(f"Expect rejection near {ALPHA:.0%}")
+
     sampler = distributions.make_gaussian_null_sampler(N, (DIMENSION,))
     kernel = kernels.make_gaussian_kernel(SIGMA)
+
     run_test("alpha", ALPHA, sampler, kernel, key, trials, permutations)
 
 def power_vs_effect_size(key, trials, permutations):
+    """
+    Power should increase with the size of the Gaussian mean shift.
+    """
+    print(f"Expect power to rise from around {ALPHA:.0%} as mean shift grows")
+
     kernel = kernels.make_gaussian_kernel(SIGMA)
 
     for i, shift in enumerate(EFFECT_SIZES):
@@ -55,67 +66,75 @@ def power_vs_effect_size(key, trials, permutations):
             permutations,
         )
 
-def power_vs_sample_size(key, trials, permutations):
-    kernel = kernels.make_gaussian_kernel(SIGMA)
+def power_vs_bandwidth_by_distribution(key, trials, permutations):
+    """
+    Compares bandwidth sensitivity across several different alternatives.
+    """
 
-    for i, n in enumerate(SAMPLE_SIZES):
-        sampler = distributions.make_gaussian_mean_shift_sampler(n, (DIMENSION,), SHIFT)
-        run_test(
-            "n",
-            n,
-            sampler,
-            kernel,
-            jax.random.fold_in(key, i),
-            trials,
-            permutations,
-        )
+    descriptions = {
+        "mean_shift": "Expect power to remain high at larger bandwidths",
+        "scale_shift": "Expect power to drop at very large bandwidths",
+        "gaussian_vs_uniform": "Expect power to peak at intermediate bandwidths",
+        "outliers": "Expect power to vary with bandwidth",
+    }
 
-def power_vs_bandwidth(key, trials, permutations):
-    sampler = distributions.make_gaussian_mean_shift_sampler(N, (DIMENSION,), SHIFT)
+    alternatives = [
+        (
+            "mean_shift",
+            distributions.make_gaussian_mean_shift_sampler(N, (DIMENSION,), MEAN_SHIFT),
+        ),
+        (
+            "scale_shift",
+            distributions.make_gaussian_scale_shift_sampler(N, (DIMENSION,), SCALE_SHIFT),
+        ),
+        (
+            "gaussian_vs_uniform",
+            distributions.make_gaussian_vs_uniform_sampler(N, (DIMENSION,)),
+        ),
+        (
+            "outliers",
+            distributions.make_gaussian_outliers_sampler(
+                N,
+                (DIMENSION,),
+                OUTLIER_PROBABILITY,
+                OUTLIER_SCALE,
+            ),
+        ),
+    ]
 
-    for i, sigma in enumerate(BANDWIDTHS):
-        kernel = kernels.make_gaussian_kernel(sigma)
-        run_test(
-            "sigma",
-            sigma,
-            sampler,
-            kernel,
-            jax.random.fold_in(key, i),
-            trials,
-            permutations,
-        )
+    for i, (name, sampler) in enumerate(alternatives):
+        print(f"\n{name}")
+        print(descriptions[name])
 
-def power_vs_dimension(key, trials, permutations):
-    for i, d in enumerate(DIMENSIONS):
-        # Keep the overall size of the mean shift roughly constant.
-        shift = SHIFT / math.sqrt(d)
-        sampler = distributions.make_gaussian_mean_shift_sampler(N, (d,), shift)
-        kernel = kernels.make_gaussian_kernel(SIGMA * math.sqrt(d))
-        run_test(
-            "dimension",
-            d,
-            sampler,
-            kernel,
-            jax.random.fold_in(key, i),
-            trials,
-            permutations,
-        )
+        # Keep the datasets/permutations fixed across bandwidths.
+        alternative_key = jax.random.fold_in(key, i)
+
+        for sigma in BANDWIDTHS:
+            kernel = kernels.make_gaussian_kernel(sigma)
+
+            run_test(
+                "sigma",
+                sigma,
+                sampler,
+                kernel,
+                alternative_key,
+                trials,
+                permutations,
+            )
 
 
 experiments = {
     "type_1": type_1_error,
     "effect_size": power_vs_effect_size,
-    "sample_size": power_vs_sample_size,
-    "bandwidth": power_vs_bandwidth,
-    "dimension": power_vs_dimension,
+    "bandwidth_comparison": power_vs_bandwidth_by_distribution,
 }
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment", choices=["all", *experiments], default="all", nargs="?")
-    parser.add_argument("--trials", type=int, default=1000)
-    parser.add_argument("--permutations", type=int, default=1000)
+    parser.add_argument("--trials", type=int, default=500)
+    parser.add_argument("--permutations", type=int, default=500)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
