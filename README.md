@@ -11,13 +11,13 @@ Given independent samples from distributions $P$ and $Q$, we want to test $H_0: 
 A positive-definite kernel $k$ defines an RKHS $\mathcal H_k$: a space of functions where evaluating $f$ at $x$ is an inner product, $f(x) = \langle f, k(x, \cdot) \rangle_{\mathcal H_k}$. MMD asks how differently the two distributions behave when measured by functions in this space:
 
 $$
-\operatorname{MMD}_k(P,Q) = \sup_{\|f\|_{\mathcal H_k} \leq 1} \left| \mathbb E_P[f(X)] - \mathbb E_Q[f(Y)] \right| = \|\mu_P - \mu_Q\|_{\mathcal H_k},
+\mathrm{MMD}_k(P,Q) = \sup_{\|f\|_{\mathcal H_k} \leq 1} \left| \mathbb E_P[f(X)] - \mathbb E_Q[f(Y)] \right| = \|\mu_P - \mu_Q\|_{\mathcal H_k},
 $$
 
 where $\mu_P = \mathbb E_P[k(X, \cdot)]$ is the kernel mean embedding of $P$. The kernel lets us calculate this distance without explicitly working with those functions:
 
 $$
-\operatorname{MMD}_k^2(P, Q) = \mathbb E[k(X, X')] + \mathbb E[k(Y, Y')] - 2 \mathbb E[k(X, Y)],
+\mathrm{MMD}_k^2(P, Q) = \mathbb E[k(X, X')] + \mathbb E[k(Y, Y')] - 2 \mathbb E[k(X, Y)],
 $$
 
 where $X, X' \sim P$ and $Y, Y' \sim Q$ all independent. In practice, we can replace these expectations with averages of kernel values between observations.
