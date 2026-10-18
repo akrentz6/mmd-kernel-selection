@@ -34,6 +34,37 @@ class PowerLossResult(NamedTuple):
 
 
 @jax.jit
+def select_max_mmd(x, y, bandwidths):
+    """
+    Selects the bandwidth maximising observed unbiased MMD squared.
+    """
+    values = jax.lax.map(lambda sigma: estimators.mmd_squared_unbiased(x, y, kernels.make_gaussian_kernel(sigma)), bandwidths)
+    return bandwidths[jnp.argmax(values)]
+
+@jax.jit
+def select_max_variance_adjusted_mmd(x, y, bandwidths, regularisation=1e-8):
+    """
+    Selects unbiased MMD squared / sqrt(jackknife variance + regularisation).
+    """
+    def score(sigma):
+        kernel = kernels.make_gaussian_kernel(sigma)
+        value = estimators.mmd_squared_unbiased(x, y, kernel)
+        variance = estimators.mmd_squared_unbiased_variance(x, y, kernel)
+        return value / jnp.sqrt(variance + regularisation)
+
+    values = jax.lax.map(score, bandwidths)
+    return bandwidths[jnp.argmax(values)]
+
+@partial(jax.jit, static_argnames=("selector", "num_permutations"))
+def naive_adaptive_test(x, y, bandwidths, key, num_permutations=1000, selector=select_max_mmd):
+    """
+    Selects on observed labels, then holds that bandwidth fixed in permutations.
+    """
+    sigma = selector(x, y, bandwidths)
+    return permutation_test(x, y, kernels.make_gaussian_kernel(sigma), key, num_permutations)
+
+
+@jax.jit
 def permute_samples(x, y, key):
     """
     Randomly reassigns the pooled observations to the two samples.
@@ -170,3 +201,29 @@ def estimate_power_loss(sampler, bandwidth, key, num_trials=500, num_permutation
         RateResult(rates[1], standard_errors[1]),
         RateResult(loss, loss_se),
     )
+
+@partial(jax.jit, static_argnames=("sampler", "num_trials", "num_permutations", "num_candidates"))
+def estimate_adaptive_rejection_rates(sampler, key, fixed_bandwidth=1.0, alpha=0.05, num_trials=500, num_permutations=500, num_candidates=9):
+    """
+    Compares fixed, pooled median, naive raw MMD, and naive variance-adjusted MMD.
+    All four methods use the same samples and permutation keys in each trial.
+    """
+    if num_trials < 1 or num_candidates < 1:
+        raise ValueError("num_trials and num_candidates must be at least 1.")
+
+    def count_rejections(counts, trial_key):
+        sample_key, permutation_key = jax.random.split(trial_key)
+        x, y = sampler(sample_key)
+        bandwidths = kernels.candidate_bandwidths(x, y, num_candidates)
+        median = bandwidths[num_candidates // 2]
+        fixed_result = permutation_test(x, y, kernels.make_gaussian_kernel(fixed_bandwidth), permutation_key, num_permutations)
+        median_result = permutation_test(x, y, kernels.make_gaussian_kernel(median), permutation_key, num_permutations)
+        raw_result = naive_adaptive_test(x, y, bandwidths, permutation_key, num_permutations)
+        adjusted_result = naive_adaptive_test(x, y, bandwidths, permutation_key, num_permutations, select_max_variance_adjusted_mmd)
+        p_values = jnp.array([fixed_result.p_value, median_result.p_value, raw_result.p_value, adjusted_result.p_value])
+        return counts + (p_values < alpha), None
+
+    keys = jax.random.split(key, num=num_trials)
+    counts, _ = jax.lax.scan(count_rejections, jnp.zeros(4, dtype=jnp.int32), keys)
+    rates = jnp.clip(counts / num_trials, 0, 1)
+    return RateResult(rates, jnp.sqrt(rates * (1 - rates) / num_trials))
