@@ -77,7 +77,47 @@ def test_rate_standard_errors():
         assert jnp.allclose(result.standard_error, expected_se)
 
 
+def test_fixed_bandwidth_power():
+    sampler = distributions.make_gaussian_mean_shift_one_coordinate_sampler(8, (2,), 2.0)
+    key = jax.random.key(3)
+    bandwidths = jnp.array([0.25, 1.0])
+    result = experiments.estimate_bandwidth_power(sampler, key, 3, 39, bandwidths=bandwidths)
+
+    for i, sigma in enumerate(bandwidths):
+        expected = experiments.estimate_rejection_rate(
+            sampler, kernels.make_gaussian_kernel(sigma), key, num_trials=3, num_permutations=39,
+        )
+        assert jnp.isclose(result.rate[i], expected.rate)
+        assert jnp.isclose(result.standard_error[i], expected.standard_error)
+    print("Fixed bandwidth power:", result.rate)
+
+def test_paired_power_loss():
+    sampler = distributions.make_gaussian_mean_shift_one_coordinate_sampler(8, (2,), 2.0)
+    key = jax.random.key(3)
+    num_trials = 4
+    outcomes = []
+    for trial_key in jax.random.split(key, num_trials):
+        sample_key, permutation_key = jax.random.split(trial_key)
+        x, y = sampler(sample_key)
+        median = kernels.pooled_median_heuristic(x, y)
+        outcomes.append([
+            experiments.permutation_test(x, y, kernels.make_gaussian_kernel(sigma), permutation_key, 39).p_value < 0.05
+            for sigma in [0.25, median]
+        ])
+
+    outcomes = jnp.array(outcomes, dtype=jnp.float32)
+    differences = outcomes[:, 0] - outcomes[:, 1]
+    result = experiments.estimate_power_loss(sampler, 0.25, key, num_trials, 39)
+    assert jnp.isclose(result.oracle.rate, jnp.mean(outcomes[:, 0]))
+    assert jnp.isclose(result.median.rate, jnp.mean(outcomes[:, 1]))
+    assert jnp.isclose(result.loss.rate, jnp.mean(differences))
+    assert jnp.isclose(result.loss.standard_error, jnp.std(differences, ddof=1) / jnp.sqrt(num_trials))
+    print("Paired power loss:", result.loss.rate, "±", result.loss.standard_error)
+
+
 if __name__ == "__main__":
     test_permutation_test_matches_recomputed_gram_matrices()
     test_permutation_test_identical_observations()
     test_rate_standard_errors()
+    test_fixed_bandwidth_power()
+    test_paired_power_loss()

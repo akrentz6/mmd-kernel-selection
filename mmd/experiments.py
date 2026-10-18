@@ -24,6 +24,15 @@ class RateResult(NamedTuple):
     standard_error: jax.Array
 
 
+class PowerLossResult(NamedTuple):
+    """
+    Powers and their paired difference on independent evaluation trials.
+    """
+    oracle: RateResult
+    median: RateResult
+    loss: RateResult
+
+
 @jax.jit
 def permute_samples(x, y, key):
     """
@@ -100,9 +109,10 @@ def estimate_rejection_rate(sampler, kernel, key, alpha=0.05, num_trials=500, nu
     return RateResult(rate, jnp.sqrt(rate * (1 - rate) / num_trials))
 
 @partial(jax.jit, static_argnames=("sampler", "num_trials", "num_permutations", "num_candidates"))
-def estimate_bandwidth_power(sampler, key, num_trials=500, num_permutations=500, alpha=0.05, num_candidates=9):
+def estimate_bandwidth_power(sampler, key, num_trials=500, num_permutations=500, alpha=0.05, num_candidates=9, bandwidths=None):
     """
     Estimates Gaussian-kernel power at multiples of each trial's pooled median.
+    If bandwidths are supplied, evaluates that fixed grid instead.
     """
     if num_trials < 1:
         raise ValueError("num_trials must be at least 1.")
@@ -114,17 +124,49 @@ def estimate_bandwidth_power(sampler, key, num_trials=500, num_permutations=500,
     def count_rejections(counts, trial_key):
         sample_key, permutation_key = jax.random.split(trial_key)
         x, y = sampler(sample_key)
-        bandwidths = kernels.candidate_bandwidths(x, y, num_candidates)
+        candidates = kernels.candidate_bandwidths(x, y, num_candidates) if bandwidths is None else bandwidths
 
         def reject(sigma):
             kernel = kernels.make_gaussian_kernel(sigma)
             result = permutation_test(x, y, kernel, permutation_key, num_permutations)
             return result.p_value < alpha
 
-        rejections = jax.lax.map(reject, bandwidths)
+        rejections = jax.lax.map(reject, candidates)
         return counts + rejections, None
 
-    counts = jnp.zeros(num_candidates, dtype=jnp.int32)
+    counts = jnp.zeros(num_candidates if bandwidths is None else len(bandwidths), dtype=jnp.int32)
     counts, _ = jax.lax.scan(count_rejections, counts, keys)
     rate = jnp.clip(counts / num_trials, 0, 1)
     return RateResult(rate, jnp.sqrt(rate * (1 - rate) / num_trials))
+
+@partial(jax.jit, static_argnames=("sampler", "num_trials", "num_permutations"))
+def estimate_power_loss(sampler, bandwidth, key, num_trials=500, num_permutations=500, alpha=0.05):
+    """
+    Compares a selected fixed bandwidth with the per-trial median.
+    """
+    if num_trials < 2:
+        raise ValueError("Power loss requires at least two evaluation trials.")
+
+    keys = jax.random.split(key, num=num_trials)
+
+    def count_rejections(counts, trial_key):
+        sample_key, permutation_key = jax.random.split(trial_key)
+        x, y = sampler(sample_key)
+        median = kernels.pooled_median_heuristic(x, y)
+        oracle_result = permutation_test(x, y, kernels.make_gaussian_kernel(bandwidth), permutation_key, num_permutations)
+        median_result = permutation_test(x, y, kernels.make_gaussian_kernel(median), permutation_key, num_permutations)
+        oracle_reject = (oracle_result.p_value < alpha).astype(jnp.int32)
+        median_reject = (median_result.p_value < alpha).astype(jnp.int32)
+        difference = oracle_reject - median_reject
+        return counts + jnp.array([oracle_reject, median_reject, difference ** 2]), None
+
+    counts, _ = jax.lax.scan(count_rejections, jnp.zeros(3, dtype=jnp.int32), keys)
+    rates = jnp.clip(counts[:2] / num_trials, 0, 1)
+    standard_errors = jnp.sqrt(rates * (1 - rates) / num_trials)
+    loss = (counts[0] - counts[1]) / num_trials
+    loss_se = jnp.sqrt(jnp.maximum(counts[2] / num_trials - loss ** 2, 0) / (num_trials - 1))
+    return PowerLossResult(
+        RateResult(rates[0], standard_errors[0]),
+        RateResult(rates[1], standard_errors[1]),
+        RateResult(loss, loss_se),
+    )
