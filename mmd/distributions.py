@@ -39,6 +39,24 @@ def make_gaussian_mean_shift_sampler(n, sample_shape=(), shift=1.0):
     return lambda key: gaussian_mean_shift(key, n, sample_shape, shift)
 
 @partial(jax.jit, static_argnames=("n", "sample_shape"))
+def gaussian_mean_shift_one_coordinate(key, n, sample_shape=(), shift=1.0):
+    """
+    Samples x from N(0, I) and y from N(shift * e_1, I), where e_1 is the
+    first standard basis vector. This keeps the Euclidean distance between
+    the means to be abs(shift) in any dimension.
+    """
+    key_x, key_y = jax.random.split(key)
+
+    x = jax.random.normal(key_x, (n,) + tuple(sample_shape))
+    y = jax.random.normal(key_y, (n,) + tuple(sample_shape))
+    y = y.at[(slice(None),) + (0,) * len(sample_shape)].add(shift)
+
+    return x, y
+
+def make_gaussian_mean_shift_one_coordinate_sampler(n, sample_shape=(), shift=1.0):
+    return lambda key: gaussian_mean_shift_one_coordinate(key, n, sample_shape, shift)
+
+@partial(jax.jit, static_argnames=("n", "sample_shape"))
 def gaussian_scale_shift(key, n, sample_shape=(), scale=2.0):
     """
     Samples x from N(0, I) and y from N(0, scale^2 * I).
