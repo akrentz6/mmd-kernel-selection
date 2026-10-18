@@ -49,8 +49,8 @@ def bandwidth_sensitivity(key, trials, permutations):
         elapsed = time.time() - start
         results[name] = power
 
-        for multiplier, rate in zip(multipliers, power):
-            print(f"sigma / median: {float(multiplier):6.4g} -> {rate:.3f}")
+        for multiplier, rate, standard_error in zip(multipliers, power.rate, power.standard_error):
+            print(f"sigma / median: {float(multiplier):6.4g} -> {rate:.3f} ± {standard_error:.3f}")
         print(f"Time: {elapsed:.1f}s", flush=True)
 
     return multipliers, results
@@ -60,14 +60,14 @@ def plot_power(multipliers, results, trials, permutations):
     fig, ax = plt.subplots(figsize=(9, 5), layout="constrained")
 
     for name, power in results.items():
-        ax.plot(multipliers, power, marker="o", label=name)
+        ax.errorbar(multipliers, power.rate, yerr=power.standard_error, marker="o", capsize=3, label=name)
 
     ax.set_xscale("log", base=2)
     ax.set_xticks(multipliers, ["1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16"])
     ax.axvline(1, color="grey", linestyle=":", label="Median heuristic")
     ax.axhline(ALPHA, color="grey", linestyle="--", label=f"alpha = {ALPHA}")
     ax.set_xlabel("Bandwidth / pooled median bandwidth")
-    ax.set_ylabel("Test power")
+    ax.set_ylabel("Test power (±1 SE)")
     ax.set_ylim(0, 1.02)
     ax.set_title(f"Bandwidth sensitivity (n={N}, d={DIMENSION})\n{trials} trials, {permutations} permutations")
     ax.grid(alpha=0.2)

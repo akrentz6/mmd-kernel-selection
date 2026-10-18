@@ -22,7 +22,7 @@ OUTLIER_SCALE = 4.0
 
 def run_test(name, value, sampler, kernel, key, trials, permutations):
     start = time.time()
-    rate = estimate_rejection_rate(
+    result = estimate_rejection_rate(
         sampler,
         kernel,
         key,
@@ -30,10 +30,10 @@ def run_test(name, value, sampler, kernel, key, trials, permutations):
         num_trials=trials,
         num_permutations=permutations,
     )
-    rate = float(jax.block_until_ready(rate))
+    result = jax.device_get(jax.block_until_ready(result))
     elapsed = time.time() - start
 
-    print(f"{name}: {value} -> {rate:.3f} ({elapsed:.1f}s)")
+    print(f"{name}: {value} -> {result.rate:.3f} ± {result.standard_error:.3f} ({elapsed:.1f}s)")
 
 def type_1_error(key, trials, permutations):
     """
