@@ -79,8 +79,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("Raw MMD vs variance-adjusted bandwidth selection")
-    print("Expect fixed and pooled median near 5% under the null; adaptive selection may inflate rejection")
-    print("Both adaptive methods select once on observed labels; adjustment does not correct selection bias", flush=True)
     results = adaptive_comparison(jax.random.key(args.seed), args.trials, args.permutations)
     fig = plot_comparison(results, args.trials, args.permutations)
     fig.savefig(OUTPUT, dpi=200)
