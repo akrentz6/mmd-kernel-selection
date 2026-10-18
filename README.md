@@ -11,7 +11,7 @@ Given independent samples from distributions $P$ and $Q$, we want to test $H_0: 
 A positive-definite kernel $k$ defines an RKHS $\mathcal H_k$: a space of functions where evaluating $f$ at $x$ is an inner product, $f(x) = \langle f, k(x, \cdot) \rangle_{\mathcal H_k}$. MMD asks how differently the two distributions behave when measured by functions in this space:
 
 $$
-\mathrm{MMD}_k(P,Q) = \sup_{\|f\|_{\mathcal H_k} \leq 1} \left| \mathbb E_P[f(X)] - \mathbb E_Q[f(Y)] \right| = \|\mu_P - \mu_Q\|_{\mathcal H_k},
+\mathrm{MMD}_k(P,Q) = \sup_{\lVert f \rVert_{\mathcal H_k} \leq 1} \left| \mathbb E_P[f(X)] - \mathbb E_Q[f(Y)] \right| = \lVert \mu_P - \mu_Q \rVert_{\mathcal H_k},
 $$
 
 where $\mu_P = \mathbb E_P[k(X, \cdot)]$ is the kernel mean embedding of $P$. The kernel lets us calculate this distance without explicitly working with those functions:
@@ -22,7 +22,7 @@ $$
 
 where $X, X' \sim P$ and $Y, Y' \sim Q$ all independent. In practice, we can replace these expectations with averages of kernel values between observations.
 
-Here we use the Gaussian kernel $k_\sigma(x, y) = \exp(-\|x - y\|^2 / (2 \sigma^2))$. For any $\sigma > 0$, this kernel is characteristic, i.e. the population MMD is zero exactly when $P = Q$. However, when dealing with finite samples, the bandwidth $\sigma$ changes which differences are easy to detect.
+Here we use the Gaussian kernel $k_\sigma(x, y) = \exp(-\lVert x - y \rVert^2 / (2 \sigma^2))$. For any $\sigma > 0$, this kernel is characteristic, i.e. the population MMD is zero exactly when $P = Q$. However, when dealing with finite samples, the bandwidth $\sigma$ changes which differences are easy to detect.
 
 A large estimated MMD on its own isn't sufficient to reject $H_0$ since the scale of the MMD depends heavily on the choice of kernel and dimensionality of the data. Under the null hypothesis, the pooled observations are interchangable, so we can compare the observed statistic with values obtained by randomly reassigning group labels. This is called a permutation test which is a non-parametric statistical method meaning it does not assume the data follows a specific probability distribution.
 
