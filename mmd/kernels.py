@@ -56,7 +56,8 @@ def candidate_bandwidths(x, y, candidates=None):
     """
     if isinstance(candidates, int):
         median_distance = pooled_median_heuristic(x, y)
-        return jnp.linspace(median_distance / 2, median_distance * 2, candidates)
+        exponents = jnp.arange(candidates) - candidates // 2
+        return median_distance * (2.0 ** exponents)
     else:
         median_distance = pooled_median_heuristic(x, y)
         return jnp.array([median_distance]) if candidates is None else jnp.array(candidates)
