@@ -52,6 +52,12 @@ Now we use our MMD statistic on real data. We will consider the CIFAR-10 and CIF
 
 We see a noticable distribution shift for several classes (e.g. airplanes and dogs). Importantly, this does not necessarily imply that a model will perform poorly on these CIFAR-10.1 classes if it can well identify the 'core' features of the object.
 
+To investigate this further, I performed MMD tests on the outputs of a pre-trained CIFAR-10 ResNet-56 model with CIFAR-10 inputs vs CIFAR-10.1 inputs. I use [Yaofo Chen's checkpoint](https://github.com/chenyaofo/pytorch-cifar-models), whose author reports 94.37% CIFAR-10 accuracy. 
+
+![CIFAR-10 vs CIFAR-10.1 on ResNet-56 outputs](figures/cifar_model_power.png)
+
+Interestingly, the model outputs show substantial distribution shifts within most individual classes, while the pooled output distribution changes much less. When all classes are combined, the differences between classes are much larger than the CIFAR-10/CIFAR-10.1 shift within each class, so these smaller shifts can be harder to detect and may partly cancel. This suggests the shift affects the model differently across classes rather than causing one consistent change in its outputs.
+
 ## Running the experiments
 
 Use Python 3.12 or newer. From this directory, install the dependencies:
@@ -84,6 +90,8 @@ data/
   cifar10.1_v6_data.npy
   cifar10.1_v6_labels.npy
 ```
+
+The ResNet-56 experiment uses PyTorch for inference. It downloads the model's weights to `data/torch_hub` by default and caches inference results to `data/cifar10_resnet56_outputs.npz` after the first run.
 
 ## Reading Material
 
