@@ -44,6 +44,14 @@ As shown above, these two approaches tend to cause too many false positives as t
 
 ![Null rejection and sensitivity to mean and scale shifts](figures/calibrated_adaptive_power.png)
 
+## CIFAR-10 vs CIFAR-10.1
+
+Now we use our MMD statistic on real data. We will consider the CIFAR-10 and CIFAR-10.1 datasets, flattening each image into a vector and scaling it to $[0, 1]$. The CIFAR-10 and CIFAR-10.1 datasets contain 10,000 and 2,000 test images respectively. CIFAR-10.1 was created to evaluate how well image classifiers generalise to truly unseen data, supposedly without distribution shift. We vary the sample size and look at both the dataset as a whole and per class.
+
+![CIFAR-10 vs CIFAR-10.1 across multiple sample sizes](figures/cifar_power.png)
+
+We see a noticable distribution shift for several classes (e.g. airplanes and dogs). Importantly, this does not necessarily imply that a model will perform poorly on these CIFAR-10.1 classes if it can well identify the 'core' features of the object.
+
 ## Running the experiments
 
 Use Python 3.12 or newer. From this directory, install the dependencies:
@@ -65,6 +73,17 @@ python -m tests.test_kernels
 ```
 
 You can use `--trials`, `--permutations`, and `--seed` to change the simulation settings, though some scripts have additional arguments. The scripts save PNGs in the working directory.
+
+### CIFAR-10 vs CIFAR-10.1 set-up
+
+Download and extract the Python version of [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html), and download the two v6 NumPy files from the official [CIFAR-10.1 repository](https://github.com/modestyachts/CIFAR-10.1/tree/master/datasets). Arrange them as follows (or use `--data-dir`):
+
+```text
+data/
+  cifar-10-batches-py/test_batch
+  cifar10.1_v6_data.npy
+  cifar10.1_v6_labels.npy
+```
 
 ## Reading Material
 
